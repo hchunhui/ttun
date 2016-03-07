@@ -34,11 +34,18 @@ int tun_create(char *dev, int flags)
 int sock_create(char *ip, unsigned short port)
 {
 	int sockfd;
+	int yes = 1;
 	struct sockaddr_in addr;
 	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("socket");
 		exit(1);
 	}
+
+	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0) {
+		perror("reuseaddr");
+                exit(1);
+	}
+
 	/* init servaddr */
 	bzero(&addr, sizeof(addr));
 	addr.sin_family = AF_INET;
