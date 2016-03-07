@@ -80,6 +80,8 @@ int main(int argc, char *argv[])
 	}
 	sprintf(buf, "ifconfig %s 192.168.112.%d dstaddr 192.168.112.%d mtu 1400 up", tun_name, my_id, peer_id);
 	system(buf);
+	sprintf(buf, "./local_config %s", tun_name);
+	system(buf);
 	printf("TUN name is %s\n", tun_name);
 
 	nfds = (peer_fd > tun_fd ? peer_fd : tun_fd) + 1;
