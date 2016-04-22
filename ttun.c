@@ -21,7 +21,7 @@ void ping()
 	time_t t;
 	t = time(NULL);
 	make_pack_ping(buf);
-	if(t - peer_last > 0)
+	if(t - peer_last > 30)
 		if(write(peer_fd, buf, 4) < 0)
 			perror("ping");
 }
