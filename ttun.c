@@ -22,8 +22,10 @@ void ping()
 	t = time(NULL);
 	make_pack_ping(buf);
 	if(t - peer_last > 30)
-		if(write(peer_fd, buf, 4) < 0)
+		if(write(peer_fd, buf, 4) < 0) {
 			perror("ping");
+			exit(1);
+		}
 }
 
 int main(int argc, char *argv[])
@@ -93,8 +95,10 @@ int main(int argc, char *argv[])
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
 		ret = select(nfds, &rfds, NULL, NULL, &tv);
-		if(ret == -1)
+		if(ret == -1) {
 			perror("select");
+			exit(1);
+		}
 		else if(ret) {
 			if(FD_ISSET(peer_fd, &rfds))
 			{
@@ -109,8 +113,10 @@ int main(int argc, char *argv[])
 					int ret;
 					while(last) {
 						ret = read(peer_fd, buf + p, last);
-						if(ret < 0)
+						if(ret < 0) {
 							perror("peer_fd");
+							exit(1);
+						}
 						last -= ret;
 						p += ret;
 					}
@@ -138,8 +144,10 @@ int main(int argc, char *argv[])
 				p = 0;
 				while(last) {
 					ret = write(peer_fd, buf + p, last);
-					if(ret < 0)
+					if(ret < 0) {
 						perror("peer_fd w");
+						exit(1);
+					}
 					last -= ret;
 					p += ret;
 				}
