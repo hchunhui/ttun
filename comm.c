@@ -17,7 +17,7 @@ void readn(int fd, void *buf, int n)
 	int p = 0;
 	while(last) {
 		ret = read(fd, buf + p, last);
-		if(ret < 0) {
+		if(ret <= 0) {
 			perror("readn");
 			exit(1);
 		}
@@ -33,7 +33,7 @@ void writen(int fd, void *buf, int n)
 	int p = 0;
 	while(last) {
 		ret = write(fd, buf + p, last);
-		if(ret < 0) {
+		if(ret <= 0) {
 			perror("writen");
 			exit(1);
 		}
