@@ -10,12 +10,15 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#define MTU 1400
+#define BUF_SIZE 4096
+
 int tun_fd;
 int peer_fd;
 time_t peer_last;
 struct sockaddr_in peer_addr;
 int my_id, peer_id;
-unsigned char buf[4096];
+unsigned char buf[BUF_SIZE];
 
 void ping()
 {
@@ -78,7 +81,7 @@ int main(int argc, char *argv[])
 		perror("tun_create");
 		return 1;
 	}
-	sprintf(buf, "ifconfig %s 192.168.112.%d dstaddr 192.168.112.%d mtu 1400 up", tun_name, my_id, peer_id);
+	sprintf(buf, "ifconfig %s 192.168.112.%d dstaddr 192.168.112.%d mtu %d up", tun_name, my_id, peer_id, MTU);
 	system(buf);
 	sprintf(buf, "./local_config %s", tun_name);
 	system(buf);
@@ -102,14 +105,14 @@ int main(int argc, char *argv[])
 			{
 				readn(peer_fd, buf, 4);
 				n = (buf[2] << 8) | buf[3];
-				assert(n <= 1404);
+				assert(n <= MTU + 4);
 				if(n > 4)
 					readn(peer_fd, buf + 4, n - 4);
 
 				switch(check_pack(buf, n))
 				{
 				case 0:
-					write(tun_fd, buf+4, n-4);
+					write(tun_fd, buf + 4, n - 4);
 					/* no break */
 				case 1:
 					/*update timestamp*/
@@ -122,8 +125,8 @@ int main(int argc, char *argv[])
 					break;
 				}
 			} else if(FD_ISSET(tun_fd, &rfds)) {
-				n = read(tun_fd, buf+4, 4096-4);
-				make_pack(buf, n+4);
+				n = read(tun_fd, buf + 4, BUF_SIZE - 4);
+				make_pack(buf, n + 4);
 				writen(peer_fd, buf, n + 4);
 			}
 		}
