@@ -8,6 +8,7 @@
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
+#include <assert.h>
 
 int tun_fd;
 int peer_fd;
@@ -22,10 +23,7 @@ void ping()
 	t = time(NULL);
 	make_pack_ping(buf);
 	if(t - peer_last > 30)
-		if(write(peer_fd, buf, 4) < 0) {
-			perror("ping");
-			exit(1);
-		}
+		writen(peer_fd, buf, 4);
 }
 
 int main(int argc, char *argv[])
@@ -102,25 +100,12 @@ int main(int argc, char *argv[])
 		else if(ret) {
 			if(FD_ISSET(peer_fd, &rfds))
 			{
-				if(read(peer_fd, buf, 4) != 4) {
-					perror("peer_fd");
-					exit(1);
-				}
+				readn(peer_fd, buf, 4);
 				n = (buf[2] << 8) | buf[3];
-				if(n > 4) {
-					int last = n - 4;
-					int p = 4;
-					int ret;
-					while(last) {
-						ret = read(peer_fd, buf + p, last);
-						if(ret < 0) {
-							perror("peer_fd");
-							exit(1);
-						}
-						last -= ret;
-						p += ret;
-					}
-				}
+				assert(n <= 1404);
+				if(n > 4)
+					readn(peer_fd, buf + 4, n - 4);
+
 				switch(check_pack(buf, n))
 				{
 				case 0:
@@ -137,20 +122,9 @@ int main(int argc, char *argv[])
 					break;
 				}
 			} else if(FD_ISSET(tun_fd, &rfds)) {
-				int last, p, ret;
 				n = read(tun_fd, buf+4, 4096-4);
 				make_pack(buf, n+4);
-				last = n + 4;
-				p = 0;
-				while(last) {
-					ret = write(peer_fd, buf + p, last);
-					if(ret < 0) {
-						perror("peer_fd w");
-						exit(1);
-					}
-					last -= ret;
-					p += ret;
-				}
+				writen(peer_fd, buf, n + 4);
 			}
 		}
 		ping();

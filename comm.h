@@ -4,6 +4,9 @@
 #include <linux/if_tun.h>
 #include <unistd.h>
 
+void readn(int fd, void *buf, int n);
+void writen(int fd, void *buf, int n);
+
 int tun_create(char *dev, int flags);
 int sock_create(char *ip, unsigned short port);
 int check_pack(unsigned char *buf, int n);

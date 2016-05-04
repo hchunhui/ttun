@@ -10,6 +10,38 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+void readn(int fd, void *buf, int n)
+{
+	int ret;
+	int last = n;
+	int p = 0;
+	while(last) {
+		ret = read(fd, buf + p, last);
+		if(ret < 0) {
+			perror("readn");
+			exit(1);
+		}
+		last -= ret;
+		p += ret;
+	}
+}
+
+void writen(int fd, void *buf, int n)
+{
+	int ret;
+	int last = n;
+	int p = 0;
+	while(last) {
+		ret = write(fd, buf + p, last);
+		if(ret < 0) {
+			perror("writen");
+			exit(1);
+		}
+		last -= ret;
+		p += ret;
+	}
+}
+
 int tun_create(char *dev, int flags)
 {
 	struct ifreq ifr;
