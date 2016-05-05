@@ -124,7 +124,9 @@ int main(int argc, char *argv[])
 						printf("%02x ", buf[j]);
 					break;
 				}
-			} else if(FD_ISSET(tun_fd, &rfds)) {
+			}
+
+			if(FD_ISSET(tun_fd, &rfds)) {
 				n = read(tun_fd, buf + 4, BUF_SIZE - 4);
 				make_pack(buf, n + 4);
 				writen(peer_fd, buf, n + 4);
