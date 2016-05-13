@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 			perror("connect");
 			exit(1);
 		}
-		printf("connect\n");
+		fprintf(stderr, "connect\n");
 	} else {
 		int listen_fd;
 		my_id = 2;
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 		close(listen_fd);
-		printf("accept\n");
+		fprintf(stderr, "accept\n");
 	}
 
 	peer_last = time(NULL);
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 	system(buf);
 	sprintf(buf, "./local_config %s", tun_name);
 	system(buf);
-	printf("TUN name is %s\n", tun_name);
+	fprintf(stderr, "TUN name is %s\n", tun_name);
 
 	nfds = (peer_fd > tun_fd ? peer_fd : tun_fd) + 1;
 
@@ -119,9 +119,9 @@ int main(int argc, char *argv[])
 					peer_last = time(NULL);
 					break;
 				default:
-					printf("error packet: %zd\n", n);
+					fprintf(stderr, "error packet: %zd\n", n);
 					for(j = 0; j < n; j++)
-						printf("%02x ", buf[j]);
+						fprintf(stderr, "%02x ", buf[j]);
 					break;
 				}
 			}
