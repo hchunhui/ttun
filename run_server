@@ -1,10 +1,10 @@
 #!/bin/sh
-cd `dirname $0`
+DIR=`dirname $0`
 if [ $# -ne 3 ]; then
     echo "$0 <bind ip> <listen port> <config_file>"
     exit 1
 fi
 while true; do
-    ./tcp s $1 $2 ./ttun $3
+    $DIR/tcp s $1 $2 $DIR/ttun $3
 done
 
