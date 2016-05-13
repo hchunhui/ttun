@@ -1,0 +1,2 @@
+#!/bin/sh
+ifconfig $1 192.168.112.1 dstaddr 192.168.112.2 mtu $2 up

@@ -1,0 +1,5 @@
+#!/bin/sh
+while true; do
+    ./tcp s $1 $2 ./ttun $3
+done
+

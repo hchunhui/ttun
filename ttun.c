@@ -1,10 +1,11 @@
 #include <stdio.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/select.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include "comm.h"
+#include <sys/ioctl.h>
+#include <fcntl.h>
+#include <net/if.h>
+#include <linux/if_tun.h>
+#include <unistd.h>
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
@@ -13,12 +14,102 @@
 #define MTU 1400
 #define BUF_SIZE 4096
 
-int tun_fd;
-int peer_fd;
-time_t peer_last;
-struct sockaddr_in peer_addr;
-int my_id, peer_id;
-unsigned char buf[BUF_SIZE];
+int tun_create(char *dev, int flags)
+{
+	struct ifreq ifr;
+	int fd, err;
+
+	if ((fd = open("/dev/net/tun", O_RDWR)) < 0)
+		return fd;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_flags |= flags;
+	if (*dev != '\0')
+		strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+	if ((err = ioctl(fd, TUNSETIFF, (void *)&ifr)) < 0) {
+		close(fd);
+		return err;
+	}
+	strcpy(dev, ifr.ifr_name);
+
+	return fd;
+}
+
+void readn(int fd, void *buf, int n)
+{
+	int ret;
+	int last = n;
+	int p = 0;
+	while(last) {
+		ret = read(fd, buf + p, last);
+		if(ret <= 0) {
+			perror("readn");
+			exit(1);
+		}
+		last -= ret;
+		p += ret;
+	}
+}
+
+void writen(int fd, void *buf, int n)
+{
+	int ret;
+	int last = n;
+	int p = 0;
+	while(last) {
+		ret = write(fd, buf + p, last);
+		if(ret <= 0) {
+			perror("writen");
+			exit(1);
+		}
+		last -= ret;
+		p += ret;
+	}
+}
+
+int check_pack(unsigned char *buf, int n)
+{
+	int i;
+	unsigned char x;
+	if(n == 4 && buf[0] == 0xb && buf[1] == 0xf)
+		return 1;
+	if(n > 4 && buf[0] == 0xd)
+	{
+		x = 0;
+		for(i = 0; i < n; i++)
+			x ^= buf[i];
+		if(x == 0)
+			return 0;
+	}
+	return -1;
+}
+
+void make_pack(unsigned char *buf, int n)
+{
+	int i;
+	unsigned char x;
+	buf[0] = 0xd;
+	buf[1] = 0;
+	buf[2] = (n >> 8) & 0xff;
+	buf[3] = (n & 0xff);
+	x = 0;
+	for(i = 0; i < n; i++)
+		x ^= buf[i];
+	buf[1] = x;
+}
+
+void make_pack_ping(unsigned char *buf)
+{
+	buf[0] = 0xb;
+	buf[1] = 0xf;
+	buf[2] = 0;
+	buf[3] = 4;
+}
+
+static int tun_fd;
+static int peer_rfd, peer_wfd;
+static time_t peer_last;
+static unsigned char buf[BUF_SIZE];
 
 void ping()
 {
@@ -26,7 +117,7 @@ void ping()
 	t = time(NULL);
 	make_pack_ping(buf);
 	if(t - peer_last > 30)
-		writen(peer_fd, buf, 4);
+		writen(peer_wfd, buf, 4);
 }
 
 int main(int argc, char *argv[])
@@ -41,38 +132,11 @@ int main(int argc, char *argv[])
 	struct timeval tv;
 	int j;
 
-	if(argc != 4)
+	if(argc != 2)
 		return -1;
-	if(argv[1][0] == 'c') {
-		my_id = 1;
-		peer_id = 2;
-		bzero(&peer_addr, sizeof(peer_addr));
-		peer_addr.sin_family = AF_INET;
-		peer_addr.sin_addr.s_addr = inet_addr(argv[2]);
-		peer_addr.sin_port = htons(atoi(argv[3]));
-		if((peer_fd = sock_create("0.0.0.0", 0)) < 0)
-			exit(1);
-		if(connect(peer_fd, (struct sockaddr *)&peer_addr, sizeof(peer_addr))) {
-			perror("connect");
-			exit(1);
-		}
-		fprintf(stderr, "connect\n");
-	} else {
-		int listen_fd;
-		my_id = 2;
-		peer_id = 1;
-		listen_fd = sock_create(argv[2], atoi(argv[3]));
-		alen = sizeof(peer_addr);
-		listen(listen_fd, 10);
-		peer_fd = accept(listen_fd, (struct sockaddr *)&peer_addr, &alen);
-		if(peer_fd < 0) {
-			perror("accept");
-			exit(1);
-		}
-		close(listen_fd);
-		fprintf(stderr, "accept\n");
-	}
 
+	peer_rfd = STDIN_FILENO;
+	peer_wfd = STDOUT_FILENO;
 	peer_last = time(NULL);
 		
 	tun_name[0] = '\0';
@@ -81,18 +145,19 @@ int main(int argc, char *argv[])
 		perror("tun_create");
 		return 1;
 	}
-	sprintf(buf, "ifconfig %s 192.168.112.%d dstaddr 192.168.112.%d mtu %d up", tun_name, my_id, peer_id, MTU);
-	system(buf);
-	sprintf(buf, "./local_config %s", tun_name);
+
+	sprintf(buf, "%s %s %d", argv[1], tun_name, MTU);
 	system(buf);
 	fprintf(stderr, "TUN name is %s\n", tun_name);
 
-	nfds = (peer_fd > tun_fd ? peer_fd : tun_fd) + 1;
+	nfds = (peer_rfd > peer_wfd ? peer_rfd : peer_wfd);
+	nfds = (tun_fd > nfds ? tun_fd : nfds);
+	nfds++;
 
 	while (1) {
 		FD_ZERO(&rfds);
 		FD_SET(tun_fd, &rfds);
-		FD_SET(peer_fd, &rfds);
+		FD_SET(peer_rfd, &rfds);
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
 		ret = select(nfds, &rfds, NULL, NULL, &tv);
@@ -101,13 +166,13 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 		else if(ret) {
-			if(FD_ISSET(peer_fd, &rfds))
+			if(FD_ISSET(peer_rfd, &rfds))
 			{
-				readn(peer_fd, buf, 4);
+				readn(peer_rfd, buf, 4);
 				n = (buf[2] << 8) | buf[3];
 				assert(n <= MTU + 4);
 				if(n > 4)
-					readn(peer_fd, buf + 4, n - 4);
+					readn(peer_rfd, buf + 4, n - 4);
 
 				switch(check_pack(buf, n))
 				{
@@ -129,7 +194,7 @@ int main(int argc, char *argv[])
 			if(FD_ISSET(tun_fd, &rfds)) {
 				n = read(tun_fd, buf + 4, BUF_SIZE - 4);
 				make_pack(buf, n + 4);
-				writen(peer_fd, buf, n + 4);
+				writen(peer_wfd, buf, n + 4);
 			}
 		}
 		ping();
