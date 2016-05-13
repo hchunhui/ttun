@@ -1,4 +1,9 @@
 #!/bin/sh
+cd `dirname $0`
+if [ $# -ne 4 ]; then
+    echo "$0 '<ssh_opts>' <server ip> <server port> <config_file>"
+    exit 1
+fi
 while true; do
     ./pipe "exec ssh $1 ./tcp c $2 $3" "exec ./ttun $4"
     echo wait for 60 s ... >&2

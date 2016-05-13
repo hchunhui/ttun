@@ -1,4 +1,9 @@
 #!/bin/sh
+cd `dirname $0`
+if [ $# -ne 3 ]; then
+    echo "$0 <server ip> <server port> <config_file>"
+    exit 1
+fi
 while true; do
     ./tcp c $1 $2 ./ttun $3
     echo wait for 60 s ... >&2
