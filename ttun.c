@@ -115,9 +115,12 @@ void ping()
 {
 	time_t t;
 	t = time(NULL);
-	make_pack_ping(buf);
-	if(t - peer_last > 30)
+
+	if(t - peer_last > 30) {
+		make_pack_ping(buf);
 		writen(peer_wfd, buf, 4);
+		peer_last = t;
+	}
 }
 
 int main(int argc, char *argv[])
@@ -180,7 +183,7 @@ int main(int argc, char *argv[])
 					write(tun_fd, buf + 4, n - 4);
 					/* no break */
 				case 1:
-					/*update timestamp*/
+					/* update timestamp */
 					peer_last = time(NULL);
 					break;
 				default:
