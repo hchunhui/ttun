@@ -4,7 +4,7 @@ STRIP = $(CROSS)strip
 CFLAGS = -O2
 BIN = $(CROSS)bin
 
-all: $(BIN) $(BIN)/pipe $(BIN)/tcp $(BIN)/ttun
+all: $(BIN) $(BIN)/pipe $(BIN)/tcp $(BIN)/ttun $(BIN)/inspect
 
 $(BIN):
 	mkdir -p $(BIN)
@@ -12,6 +12,7 @@ $(BIN):
 $(BIN)/ttun: ttun.c
 $(BIN)/pipe: pipe.c
 $(BIN)/tcp: tcp.c
+$(BIN)/inspect: inspect.c
 
 $(BIN)/%: %.c
 	$(CC) $(CFLAGS) -o $@ $<
