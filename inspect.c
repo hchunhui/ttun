@@ -65,6 +65,11 @@ int main(int argc, char **argv)
 		close(fd);
 	}
 
+	/* forward handshake */
+	char buf[2];
+	readn(0, buf, 2);
+	writen(1, buf, 2);
+
 	while (1)
 		fwd(0, 1);
 

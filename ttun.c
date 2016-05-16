@@ -69,39 +69,25 @@ void writen(int fd, void *buf, int n)
 
 int check_pack(unsigned char *buf, int n)
 {
-	int i;
-	unsigned char x;
-	if(n == 4 && buf[0] == 0xb && buf[1] == 0xf)
+	if(n == 4 && buf[0] == 0xb)
 		return 1;
 	if(n > 4 && buf[0] == 0xd)
-	{
-		x = 0;
-		for(i = 0; i < n; i++)
-			x ^= buf[i];
-		if(x == 0)
-			return 0;
-	}
+		return 0;
 	return -1;
 }
 
 void make_pack(unsigned char *buf, int n)
 {
-	int i;
-	unsigned char x;
 	buf[0] = 0xd;
 	buf[1] = 0;
 	buf[2] = (n >> 8) & 0xff;
 	buf[3] = (n & 0xff);
-	x = 0;
-	for(i = 0; i < n; i++)
-		x ^= buf[i];
-	buf[1] = x;
 }
 
 void make_pack_ping(unsigned char *buf)
 {
 	buf[0] = 0xb;
-	buf[1] = 0xf;
+	buf[1] = 0;
 	buf[2] = 0;
 	buf[3] = 4;
 }
@@ -141,6 +127,16 @@ int main(int argc, char *argv[])
 	peer_rfd = STDIN_FILENO;
 	peer_wfd = STDOUT_FILENO;
 	peer_last = time(NULL);
+
+	/* handshake */
+	buf[0] = 0x55;
+	buf[1] = 0xaa;
+	writen(peer_wfd, buf, 2);
+	readn(peer_rfd, buf, 2);
+	if(buf[0] != 0x55 || buf[1] != 0xaa) {
+		printf("handshake error!\n");
+		exit(1);
+	}
 		
 	tun_name[0] = '\0';
 	tun_fd = tun_create(tun_name, IFF_TUN | IFF_NO_PI);
