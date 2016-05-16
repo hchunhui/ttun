@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/select.h>
+#include <netinet/tcp.h>
 
 int sock_create(char *ip, unsigned short port)
 {
@@ -33,6 +34,12 @@ int sock_create(char *ip, unsigned short port)
 		return -1;
 	}
 	return sockfd;
+}
+
+void set_tcp_nodelay(int fd)
+{
+	int enable = 1;
+	setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
 }
 
 void fwd(int ifd, int ofd)
@@ -87,6 +94,8 @@ int main(int argc, char **argv)
 		}
 		close(listen_fd);
 	}
+
+	set_tcp_nodelay(peer_fd);
 
 	if(argc >= 5) {
 			dup2(peer_fd, 0);
