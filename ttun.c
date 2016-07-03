@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
 	writen(peer_wfd, buf, 2);
 	readn(peer_rfd, buf, 2);
 	if(buf[0] != 0x55 || buf[1] != 0xaa) {
-		printf("handshake error!\n");
+		fprintf(stderr, "handshake error!\n");
 		exit(1);
 	}
 		
