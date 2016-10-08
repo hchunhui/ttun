@@ -82,12 +82,12 @@ int xconnect(int fd, struct sockaddr *addr, int addrlen, int timeo)
 	return ret;
 }
 
-void fwd(int ifd, int ofd)
+int fwd(int ifd, int ofd)
 {
 	static char buf[4096];
 	int ret;
 	ret = read(ifd, buf, 4096);
-	if(ret <= 0) {
+	if(ret < 0) {
 		perror("fwd_read");
 		exit(1);
 	} else {
@@ -103,6 +103,8 @@ void fwd(int ifd, int ofd)
 			p += ret;
 		}
 	}
+
+	return ret;
 }
 
 int main(int argc, char **argv)
@@ -145,11 +147,14 @@ int main(int argc, char **argv)
 	} else {
 		fd_set rfds;
 		int ret;
+		int flag1 = 1, flag2 = 1;
 
-		while (1) {
+		while (flag1 || flag2) {
 			FD_ZERO(&rfds);
-			FD_SET(0, &rfds);
-			FD_SET(peer_fd, &rfds);
+			if(flag1)
+				FD_SET(0, &rfds);
+			if(flag2)
+				FD_SET(peer_fd, &rfds);
 
 			ret = select(peer_fd + 1, &rfds, NULL, NULL, NULL);
 			if(ret == -1) {
@@ -157,9 +162,15 @@ int main(int argc, char **argv)
 				exit(1);
 			} else if(ret) {
 				if(FD_ISSET(peer_fd, &rfds))
-					fwd(peer_fd, 1);
+					if(fwd(peer_fd, 1) == 0) {
+						flag1 = 0;
+						flag2 = 0; /* XXX */
+					}
 				if(FD_ISSET(0, &rfds))
-					fwd(0, peer_fd);
+					if(fwd(0, peer_fd) == 0) {
+						shutdown(peer_fd, SHUT_WR);
+						flag1 = 0;
+					}
 			}
 		}
 	}
