@@ -5,7 +5,10 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/select.h>
+#include <sys/time.h>
 #include <netinet/tcp.h>
+#include <fcntl.h>
+#include <errno.h>
 
 int sock_create(char *ip, unsigned short port)
 {
@@ -40,6 +43,43 @@ void set_tcp_nodelay(int fd)
 {
 	int enable = 1;
 	setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
+}
+
+int xconnect(int fd, struct sockaddr *addr, int addrlen, int timeo)
+{
+	socklen_t len = sizeof(errno);
+	int flags = fcntl(fd, F_GETFL, 0);
+	struct timeval tm = { timeo, 0 };
+	fd_set set;
+	int ret;
+
+	if (flags < 0) {
+		perror("getfl");
+		exit(1);
+	}
+
+	if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+		perror("setfl");
+		exit(1);
+	}
+
+	ret = connect(fd, addr, addrlen);
+	if (ret < 0) {
+		FD_ZERO(&set);
+		FD_SET(fd, &set);
+
+		if (select(fd + 1, NULL, &set, NULL, &tm) > 0) {
+			getsockopt(fd, SOL_SOCKET, SO_ERROR, &errno, &len);
+			ret = errno ? -1 : 0;
+		}
+	}
+
+	if (fcntl(fd, F_SETFL, flags) < 0) {
+		perror("setfl2");
+		exit(1);
+	}
+
+	return ret;
 }
 
 void fwd(int ifd, int ofd)
@@ -79,7 +119,7 @@ int main(int argc, char **argv)
 		peer_addr.sin_port = htons(atoi(argv[3]));
 		if((peer_fd = sock_create("0.0.0.0", 0)) < 0)
 			exit(1);
-		if(connect(peer_fd, (struct sockaddr *)&peer_addr, sizeof(peer_addr))) {
+		if(xconnect(peer_fd, (struct sockaddr *)&peer_addr, sizeof(peer_addr), 10)) {
 			perror("connect");
 			exit(1);
 		}
