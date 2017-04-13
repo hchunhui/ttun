@@ -1,0 +1,29 @@
+#!/bin/sh
+. `dirname $0`/comm.sh
+
+IF="br0"
+FILE="/tmp/myip"
+SERVER=""
+SERVER_FILE="myip"
+
+notify() {
+	if [ -f "$FILE" ]
+	then
+		OLD_IP="`cat "$FILE"`"
+	else
+		OLD_IP=""
+	fi
+
+	NEW_IP="`get_ip4 $IF`"
+
+	if [ "$OLD_IP" != "$NEW_IP" ]
+	then
+		if [ -n "$NEW_IP" ]
+		then
+			ssh "$SERVER" "echo $NEW_IP > \"$SERVER_FILE\""
+		fi
+		echo "$NEW_IP" > "$FILE"
+	fi
+}
+
+notify

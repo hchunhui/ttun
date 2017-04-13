@@ -1,0 +1,7 @@
+#!/bin/sh
+cd `dirname $0`
+IP="`cat myip`"
+if [ -n "$IP" ]
+then
+	exec ./tcp c "$IP" "$1"
+fi

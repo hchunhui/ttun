@@ -1,0 +1,4 @@
+#!/bin/sh
+. `dirname $0`/comm.sh
+
+get_ip4 "$1"
