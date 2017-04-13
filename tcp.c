@@ -15,6 +15,9 @@ int sock_create(char *ip, unsigned short port)
 	int sockfd;
 	int yes = 1;
 	struct sockaddr_in addr;
+	int optval;
+	socklen_t optlen = sizeof(optval);
+
 	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("socket");
 		exit(1);
@@ -23,6 +26,34 @@ int sock_create(char *ip, unsigned short port)
 	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0) {
 		perror("reuseaddr");
                 exit(1);
+	}
+
+	optval = 1;
+	optlen = sizeof(optval);
+	if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen) < 0) {
+		perror("setsockopt()");
+		exit(1);
+	}
+
+	optval = 3;
+	optlen = sizeof(optval);
+	if (setsockopt(sockfd, SOL_TCP, TCP_KEEPCNT, &optval, optlen) < 0) {
+		perror("setsockopt()");
+		exit(1);
+	}
+
+	optval = 5;
+	optlen = sizeof(optval);
+	if (setsockopt(sockfd, SOL_TCP, TCP_KEEPIDLE, &optval, optlen) < 0) {
+		perror("setsockopt()");
+		exit(1);
+	}
+
+	optval = 550;
+	optlen = sizeof(optval);
+	if (setsockopt(sockfd, SOL_TCP, TCP_KEEPINTVL, &optval, optlen) < 0) {
+		perror("setsockopt()");
+		exit(1);
 	}
 
 	/* init servaddr */
